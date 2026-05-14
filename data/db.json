@@ -1,0 +1,170 @@
+{
+  "settings": {
+    "businessName": "Luma Beauty",
+    "dayStart": "09:00",
+    "dayEnd": "20:00",
+    "slotStepMinutes": 60
+  },
+  "services": [
+    {
+      "id": "haircut",
+      "name": "Укладка волос",
+      "durationMinutes": 30,
+      "price": 20000,
+      "active": true
+    },
+    {
+      "id": "manicure",
+      "name": "Маникюр",
+      "durationMinutes": 90,
+      "price": 180000,
+      "active": false
+    },
+    {
+      "id": "brows",
+      "name": "Брови",
+      "durationMinutes": 45,
+      "price": 90000,
+      "active": false
+    },
+    {
+      "id": "3217caf1-7866-43a7-997c-ac0469e0b560",
+      "name": "Пиллинг волос, женский",
+      "durationMinutes": 120,
+      "price": 650000,
+      "active": true
+    },
+    {
+      "id": "1c1ea6e3-13cd-4ccb-b72c-03d9554f1dbe",
+      "name": "Пиллинг волос, мужской",
+      "durationMinutes": 60,
+      "price": 500000,
+      "active": true
+    }
+  ],
+  "bookings": [
+    {
+      "id": "demo-1",
+      "serviceId": "manicure",
+      "clientName": "Алина",
+      "clientPhone": "+998 90 000 00 00",
+      "date": "2026-05-13",
+      "startTime": "10:00",
+      "durationMinutes": 90,
+      "status": "cancelled",
+      "createdAt": "2026-05-13T12:47:00.306Z"
+    },
+    {
+      "id": "481dfc2e-6905-4e0e-b424-cf25e260fd31",
+      "serviceId": "3217caf1-7866-43a7-997c-ac0469e0b560",
+      "clientName": "фара",
+      "clientPhone": "+9989770977777",
+      "date": "2026-05-21",
+      "startTime": "17:00",
+      "durationMinutes": 60,
+      "status": "cancelled",
+      "telegramUser": null,
+      "createdAt": "2026-05-14T03:52:50.197Z"
+    },
+    {
+      "id": "1c8fdd57-c030-4783-b65e-d9537420a804",
+      "serviceId": "3217caf1-7866-43a7-997c-ac0469e0b560",
+      "clientName": "варввв",
+      "clientPhone": "+99897709774",
+      "date": "2026-05-21",
+      "startTime": "15:30",
+      "durationMinutes": 60,
+      "status": "cancelled",
+      "telegramUser": null,
+      "createdAt": "2026-05-14T03:53:27.004Z"
+    },
+    {
+      "id": "25a09940-18fe-4c1b-9881-2f798b46117b",
+      "serviceId": "3217caf1-7866-43a7-997c-ac0469e0b560",
+      "clientName": "фара",
+      "clientPhone": "+998999997777",
+      "date": "2026-05-14",
+      "startTime": "15:00",
+      "durationMinutes": 60,
+      "status": "confirmed",
+      "telegramUser": null,
+      "createdAt": "2026-05-14T05:25:36.352Z"
+    },
+    {
+      "id": "aaf00f6a-f8cc-472e-b3c4-f7d8cfa83f38",
+      "type": "block",
+      "serviceId": null,
+      "clientName": "День занят",
+      "clientPhone": "",
+      "note": "Весь день занят",
+      "date": "2026-05-08",
+      "startTime": "09:00",
+      "durationMinutes": 660,
+      "allDay": true,
+      "status": "confirmed",
+      "createdAt": "2026-05-14T05:56:51.277Z"
+    },
+    {
+      "id": "aa46d02e-1a7e-4aaf-96f5-284520114399",
+      "type": "block",
+      "serviceId": null,
+      "clientName": "День занят",
+      "clientPhone": "",
+      "note": "Весь день занят",
+      "date": "2026-05-15",
+      "startTime": "09:00",
+      "durationMinutes": 660,
+      "allDay": true,
+      "status": "confirmed",
+      "createdAt": "2026-05-14T05:56:59.574Z"
+    },
+    {
+      "id": "b22a78a8-99d6-436c-9ae9-d77076d774c9",
+      "serviceId": "1c1ea6e3-13cd-4ccb-b72c-03d9554f1dbe",
+      "clientName": "Антон",
+      "clientPhone": "+9989978087987",
+      "date": "2026-05-14",
+      "startTime": "16:00",
+      "durationMinutes": 60,
+      "status": "confirmed",
+      "telegramUser": null,
+      "createdAt": "2026-05-14T06:03:38.122Z"
+    },
+    {
+      "id": "dd097c2e-42f0-4c34-8c10-4c3c04daa262",
+      "serviceId": "3217caf1-7866-43a7-997c-ac0469e0b560",
+      "clientName": "Самаира",
+      "clientPhone": "+9989978087444",
+      "date": "2026-05-14",
+      "startTime": "17:00",
+      "durationMinutes": 120,
+      "status": "confirmed",
+      "telegramUser": null,
+      "createdAt": "2026-05-14T06:04:17.455Z"
+    },
+    {
+      "id": "75a6d8ca-344f-47a6-b9a1-93a4e8b38a05",
+      "serviceId": "3217caf1-7866-43a7-997c-ac0469e0b560",
+      "clientName": "Алиса",
+      "clientPhone": "+998999778899",
+      "date": "2026-05-14",
+      "startTime": "13:00",
+      "durationMinutes": 120,
+      "status": "confirmed",
+      "telegramUser": null,
+      "createdAt": "2026-05-14T06:19:28.135Z"
+    },
+    {
+      "id": "6bed88a3-4444-4375-bbcc-32fffe7e68ff",
+      "serviceId": "3217caf1-7866-43a7-997c-ac0469e0b560",
+      "clientName": "Вера",
+      "clientPhone": "+98987789879",
+      "date": "2026-05-16",
+      "startTime": "10:00",
+      "durationMinutes": 120,
+      "status": "confirmed",
+      "telegramUser": null,
+      "createdAt": "2026-05-14T06:31:50.072Z"
+    }
+  ]
+}
