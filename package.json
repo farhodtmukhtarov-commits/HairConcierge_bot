@@ -1,0 +1,12 @@
+{
+  "name": "telegram-booking-mini-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Telegram Mini App for service booking with calendar and admin service management.",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
