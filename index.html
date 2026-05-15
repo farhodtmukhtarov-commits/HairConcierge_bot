@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Beauty Cloud Admin</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f2f2f7; color: #000; -webkit-tap-highlight-color: transparent; }
+        .ios-card { background: white; border-radius: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .ios-btn-blue { background-color: #007aff; color: white; border-radius: 12px; }
+        .selected-item { background-color: #007aff !important; color: white !important; }
+        .in-range-item { background-color: #cce5ff !important; color: #007aff !important; }
+        .today-mark { border: 1.5px solid #007aff; color: #007aff; font-weight: 700; }
+        .time-blocked { background-color: #e5e5ea !important; color: #8e8e93 !important; cursor: not-allowed; opacity: 0.5; }
+        .section-title { font-size: 11px; font-weight: 600; color: #8e8e93; text-transform: uppercase; margin: 20px 0 8px 12px; }
+        .modal-overlay { background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); }
+    </style>
+</head>
+<body class="pb-20">
+
+<div id="app" class="max-w-md mx-auto">
+    
+    <!-- Переключатель режима -->
+    <div class="p-4 flex justify-between items-center">
+        <h2 class="text-xl font-bold">{{ view === 'client' ? 'Запись' : 'Админ-панель' }}</h2>
+        <button @click="toggleView" class="text-sm font-semibold text-blue-600 bg-white px-4 py-2 rounded-full shadow-sm">
+            {{ view === 'client' ? 'Управление' : 'Выход' }}
+        </button>
+    </div>
+
+    <!-- ADMIN LOGIN -->
+    <div v-if="showLogin" class="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-6">
+        <div class="ios-card w-full p-6 space-y-4">
+            <h3 class="text-center font-bold">Пароль админа</h3>
+            <input v-model="adminPasswordInput" type="password" class="w-full p-4 bg-gray-100 rounded-xl text-center outline-none">
+            <button @click="checkAdminPassword" class="w-full ios-btn-blue py-3 font-bold">Войти</button>
+        </div>
+    </div>
+
+    <!-- ДЕТАЛИ КЛИЕНТА (MODAL) -->
+    <div v-if="selectedBookingDetails" class="fixed inset-0 modal-overlay z-50 flex items-end sm:items-center justify-center p-4">
+        <div class="ios-card w-full max-w-sm p-6 space-y-4 animate-slide-up">
+            <div class="flex justify-between items-start">
+                <h3 class="text-lg font-bold">Детали записи</h3>
+                <button @click="selectedBookingDetails = null" class="text-gray-400 text-xl">&times;</button>
+            </div>
+            <div class="space-y-3 text-sm">
+                <div class="flex justify-between border-b pb-2"> <span class="text-gray-500">Клиент:</span> <b>{{ selectedBookingDetails.name }}</b> </div>
+                <div class="flex justify-between border-b pb-2"> <span class="text-gray-500">Телефон:</span> <b>{{ selectedBookingDetails.phone || '—' }}</b> </div>
+                <div class="flex justify-between border-b pb-2"> <span class="text-gray-500">Услуга:</span> <b>{{ selectedBookingDetails.serviceName }}</b> </div>
+                <div class="flex justify-between border-b pb-2"> <span class="text-gray-500">Время:</span> <b>{{ selectedBookingDetails.time }} — {{ calculateEndTime(selectedBookingDetails.time, selectedBookingDetails.duration) }}</b> </div>
+            </div>
+            <button @click="selectedBookingDetails = null" class="w-full ios-btn-blue py-3 font-bold mt-4">Закрыть</button>
+        </div>
+    </div>
+
+    <div class="px-4 space-y-4">
+        <!-- КАЛЕНДАРЬ -->
+        <section>
+            <div class="flex items-center justify-between mb-3 px-2">
+                <div><span class="text-2xl font-bold capitalize">{{ monthName }}</span> <span class="text-2xl font-light ml-1 text-gray-400">{{ currentYear }}</span></div>
+                <div class="flex space-x-1">
+                    <button @click="changeMonth(-1)" class="p-2 text-blue-600"><i class="fa-solid fa-chevron-left"></i></button>
+                    <button @click="changeMonth(1)" class="p-2 text-blue-600"><i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+            </div>
+            <div class="ios-card p-4">
+                <div class="grid grid-cols-7 gap-1 text-center mb-3 text-[10px] font-bold text-gray-300 uppercase">
+                    <div v-for="d in ['Пн','Вт','Ср','Чт','Пт','Сб','Вс']">{{d}}</div>
+                </div>
+                <div class="grid grid-cols-7 gap-2">
+                    <div v-for="empty in firstDayOffset" class="h-9"></div>
+                    <button v-for="day in daysInMonth" :key="day" @click="selectDate(day)"
+                        :class="['h-9 w-9 flex items-center justify-center rounded-full text-sm relative', isDateSelected(day) ? 'selected-item shadow-md' : 'hover:bg-gray-50', isToday(day) && !isDateSelected(day) ? 'today-mark' : '']">
+                        {{ day }}
+                        <div v-if="hasBookings(day)" :class="isDateSelected(day) ? 'bg-white' : 'bg-blue-400'" class="absolute bottom-1 w-1 h-1 rounded-full"></div>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ФОРМА ЗАПИСИ -->
+        <div v-if="form.date" class="ios-card p-4 space-y-4">
+            <h3 class="text-xs font-bold text-gray-400 uppercase">Новая запись: {{ formatDate(form.date) }}</h3>
+            <div v-if="view === 'admin'" class="flex bg-gray-100 p-1 rounded-lg">
+                <button @click="form.type = 'client'" :class="form.type === 'client' ? 'bg-white shadow' : ''" class="flex-1 py-1 text-[10px] font-bold rounded-md">КЛИЕНТ</button>
+                <button @click="form.type = 'block'" :class="form.type === 'block' ? 'bg-white shadow text-red-500' : ''" class="flex-1 py-1 text-[10px] font-bold rounded-md">БЛОК</button>
+            </div>
+            <select v-if="form.type === 'client'" v-model="form.service" class="w-full p-3 bg-gray-50 rounded-xl text-sm outline-none">
+                <option :value="null">-- Выберите услугу --</option>
+                <option v-for="s in services" :key="s.id" :value="s">{{ s.name }} ({{ s.duration }}м)</option>
+            </select>
+            <div v-if="form.service || form.type === 'block'" class="grid grid-cols-4 gap-2">
+                <button v-for="t in timeSlots" :key="t" @click="isSlotSelectable(t) ? form.time = t : null"
+                    :class="[form.time === t ? 'selected-item' : 'bg-gray-50', isSlotBlocked(t) ? 'time-blocked' : '', isTimeInRange(t) ? 'in-range-item' : '']"
+                    class="py-2 rounded-lg text-xs font-medium">{{ t }}</button>
+            </div>
+            <div v-if="form.time" class="space-y-2">
+                <input v-model="form.name" type="text" :placeholder="form.type === 'client' ? 'Имя' : 'Причина'" class="w-full p-3 bg-gray-50 rounded-xl text-sm outline-none">
+                <input v-if="form.type === 'client'" v-model="form.phone" type="tel" placeholder="Телефон" class="w-full p-3 bg-gray-50 rounded-xl text-sm outline-none">
+                <button @click="saveBooking" class="ios-btn-blue w-full py-4 rounded-xl font-bold">Сохранить</button>
+            </div>
+        </div>
+
+        <!-- СПИСОК НЕДЕЛИ ДЛЯ АДМИНА -->
+        <div v-if="view === 'admin'" class="space-y-4">
+            <h3 class="section-title">График на неделю</h3>
+            <div v-for="day in weekDays" :key="day.date" class="ios-card overflow-hidden">
+                <div class="bg-gray-50 px-4 py-2 text-[10px] font-bold text-gray-400 border-b flex justify-between uppercase">
+                    <span>{{ day.weekdayFull }}</span> <span>{{ formatDate(day.date) }}</span>
+                </div>
+                <div class="divide-y divide-gray-50">
+                    <div v-if="getGroupedBookings(day.date).length === 0" class="p-4 text-xs text-gray-300 italic">Свободно</div>
+                    <div v-for="b in getGroupedBookings(day.date)" :key="b.groupId" 
+                        @click="showDetails(b)"
+                        class="p-3 flex items-center justify-between active:bg-gray-50">
+                        <div class="flex items-center space-x-3">
+                            <div class="text-center w-16 border-r pr-2">
+                                <div class="text-[11px] font-bold text-blue-600">{{ b.time }}</div>
+                                <div class="text-[9px] text-gray-400">{{ calculateEndTime(b.time, b.duration) }}</div>
+                            </div>
+                            <div>
+                                <p class="text-sm font-bold text-gray-800">{{ b.name }}</p>
+                                <p class="text-[10px] text-gray-500 uppercase font-bold">{{ b.serviceName }}</p>
+                            </div>
+                        </div>
+                        <button @click.stop="deleteBookingGroup(b.groupId)" class="text-gray-300 px-2"><i class="fa-solid fa-circle-minus"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyDZ24QZe_DJKN-k46qFUfxeMhMMI5_aE0U",
+        authDomain: "hair-4a62c.firebaseapp.com",
+        projectId: "hair-4a62c",
+        storageBucket: "hair-4a62c.firebasestorage.app",
+        messagingSenderId: "261879856258",
+        appId: "1:261879856258:web:99ee1c7d75a0f69d7c489b",
+        measurementId: "G-05L1BF3FZ6"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const { createApp, ref, computed, onMounted } = Vue;
+
+    createApp({
+        setup() {
+            const view = ref('client');
+            const showLogin = ref(false);
+            const adminPasswordInput = ref('');
+            const selectedBookingDetails = ref(null);
+            const currentDate = ref(new Date());
+            const bookings = ref([]);
+            const services = ref([]);
+            const form = ref({ date: new Date().toISOString().split('T')[0], time: '', service: null, name: '', phone: '', type: 'client' });
+
+            onMounted(() => {
+                onSnapshot(collection(db, "services"), (snap) => services.value = snap.docs.map(d => ({id: d.id, ...d.data()})));
+                onSnapshot(collection(db, "bookings"), (snap) => bookings.value = snap.docs.map(d => ({id: d.id, ...d.data()})));
+            });
+
+            const timeSlots = computed(() => { let r = []; for(let i=9; i<=20; i++) r.push(`${i}:00`); return r; });
+            const monthName = computed(() => currentDate.value.toLocaleDateString('ru-RU', { month: 'long' }));
+            const currentYear = computed(() => currentDate.value.getFullYear());
+            const daysInMonth = computed(() => new Date(currentYear.value, currentDate.value.getMonth() + 1, 0).getDate());
+            const firstDayOffset = computed(() => { let d = new Date(currentYear.value, currentDate.value.getMonth(), 1).getDay(); return d === 0 ? 6 : d - 1; });
+
+            // Динамическая неделя относительно выбранной даты
+            const weekDays = computed(() => {
+                let res = [];
+                let selDate = new Date(form.value.date);
+                // Находим понедельник этой недели
+                let day = selDate.getDay();
+                let diff = selDate.getDate() - day + (day === 0 ? -6 : 1);
+                let monday = new Date(selDate.setDate(diff));
+
+                for(let i=0; i<7; i++) {
+                    let d = new Date(monday);
+                    d.setDate(monday.getDate() + i);
+                    res.push({
+                        date: d.toISOString().split('T')[0],
+                        weekdayFull: d.toLocaleDateString('ru-RU', { weekday: 'long' })
+                    });
+                }
+                return res;
+            });
+
+            const selectDate = (day) => {
+                form.value.date = `${currentYear.value}-${String(currentDate.value.getMonth()+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+                form.value.time = '';
+            };
+
+            const isSlotBlocked = (time) => bookings.value.some(b => b.date === form.value.date && b.time === time);
+            const isSlotSelectable = (startTime) => {
+                if (isSlotBlocked(startTime)) return false;
+                let duration = form.value.type === 'block' ? 60 : (form.value.service?.duration || 60);
+                let needed = Math.ceil(duration / 60);
+                let idx = timeSlots.value.indexOf(startTime);
+                for (let i = 0; i < needed; i++) {
+                    if (!timeSlots.value[idx+i] || isSlotBlocked(timeSlots.value[idx+i])) return false;
+                }
+                return true;
+            };
+
+            const saveBooking = async () => {
+                const gid = Date.now().toString();
+                let duration = form.value.type === 'block' ? 60 : form.value.service.duration;
+                let needed = Math.ceil(duration / 60);
+                let idx = timeSlots.value.indexOf(form.value.time);
+                for (let i = 0; i < needed; i++) {
+                    await addDoc(collection(db, "bookings"), {
+                        groupId: gid, date: form.value.date, time: timeSlots.value[idx+i],
+                        type: form.value.type, name: form.value.name, phone: form.value.phone || '',
+                        serviceName: form.value.type === 'block' ? 'БЛОК' : form.value.service.name,
+                        duration: duration, isHead: i === 0
+                    });
+                }
+                form.value.time = ''; form.value.name = ''; form.value.phone = '';
+            };
+
+            const calculateEndTime = (start, dur) => {
+                let [h, m] = start.split(':').map(Number);
+                let d = new Date(2000, 0, 1, h, m + dur);
+                return d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0');
+            };
+
+            return {
+                view, showLogin, adminPasswordInput, selectedBookingDetails,
+                toggleView: () => { if(view.value === 'client') showLogin.value = true; else view.value = 'client'; },
+                checkAdminPassword: () => { if(adminPasswordInput.value === '1234') { view.value = 'admin'; showLogin.value = false; adminPasswordInput.value = ''; } else alert('Неверно'); },
+                monthName, currentYear, daysInMonth, firstDayOffset, weekDays,
+                changeMonth: (v) => { let d = new Date(currentDate.value); d.setMonth(d.getMonth()+v); currentDate.value = d; },
+                selectDate, isDateSelected: (d) => form.value.date === `${currentYear.value}-${String(currentDate.value.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`,
+                isToday: (d) => d === new Date().getDate() && currentDate.value.getMonth() === new Date().getMonth(),
+                timeSlots, form, isSlotBlocked, isSlotSelectable, saveBooking, services,
+                hasBookings: (d) => bookings.value.some(b => b.date === `${currentYear.value}-${String(currentDate.value.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`),
+                getGroupedBookings: (date) => bookings.value.filter(b => b.date === date && b.isHead).sort((a,b) => a.time.localeCompare(b.time)),
+                deleteBookingGroup: async (gid) => { if(confirm('Удалить?')) { const q = query(collection(db, "bookings"), where("groupId", "==", gid)); const snap = await getDocs(q); snap.forEach(async (d) => await deleteDoc(doc(db, "bookings", d.id))); } },
+                calculateEndTime,
+                showDetails: (b) => { selectedBookingDetails.value = b; },
+                isTimeInRange: (t) => { if(!form.value.time) return false; let dur = form.value.type === 'block' ? 60 : (form.value.service?.duration || 60); let n = Math.ceil(dur/60); let s = timeSlots.value.indexOf(form.value.time); let c = timeSlots.value.indexOf(t); return c >= s && c < s + n; },
+                formatDate: (s) => new Date(s).toLocaleDateString('ru-RU', {day:'numeric', month:'short'})
+            }
+        }
+    }).mount('#app');
+</script>
+
+</body>
+</html>
