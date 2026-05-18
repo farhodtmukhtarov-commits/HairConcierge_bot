@@ -3,81 +3,174 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Beauty Cloud Admin</title>
+    <title>Beauty Cloud</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f2f2f7; color: #000; -webkit-tap-highlight-color: transparent; }
-        .ios-card { background: white; border-radius: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-        .ios-btn-blue { background-color: #007aff; color: white; border-radius: 12px; }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background-color: #f2f2f7;
+            color: #1c1c1e;
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior: none;
+        }
+        .ios-card { background: white; border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.07); }
+        .ios-btn-blue { background-color: #007aff; color: white; border-radius: 14px; transition: opacity 0.15s; }
+        .ios-btn-blue:active { opacity: 0.8; }
+        .ios-btn-blue:disabled { background-color: #a0c4ff; cursor: not-allowed; }
+        .ios-btn-red { background-color: #ff3b30; color: white; border-radius: 14px; }
+
         .selected-item { background-color: #007aff !important; color: white !important; }
-        .in-range-item { background-color: #cce5ff !important; color: #007aff !important; }
-        .today-mark { border: 1.5px solid #007aff; color: #007aff; font-weight: 700; }
-        .time-blocked { background-color: #e5e5ea !important; color: #8e8e93 !important; cursor: not-allowed; opacity: 0.5; }
-        .section-title { font-size: 11px; font-weight: 600; color: #8e8e93; text-transform: uppercase; margin: 20px 0 8px 12px; }
-        .modal-overlay { background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); }
+        .in-range-item { background-color: #dceeff !important; color: #007aff !important; }
+        .today-mark { border: 2px solid #007aff; color: #007aff; font-weight: 700; }
+        .time-blocked { background-color: #e5e5ea !important; color: #aeaeb2 !important; cursor: not-allowed !important; }
+        .time-free { background-color: #f2f2f7; cursor: pointer; }
+        .time-free:active { opacity: 0.7; }
+
+        .section-title { font-size: 11px; font-weight: 700; color: #8e8e93; text-transform: uppercase; letter-spacing: 0.05em; margin: 20px 0 8px 4px; }
+        .modal-overlay { background: rgba(0,0,0,0.45); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+
+        .booking-type-block { border-left: 3px solid #ff3b30; background: #fff5f5; }
+        .booking-type-client { border-left: 3px solid #007aff; }
+
+        /* Toast */
+        .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: #1c1c1e; color: white; padding: 12px 20px; border-radius: 14px; font-size: 14px; font-weight: 500; opacity: 0; transition: all 0.3s ease; z-index: 999; white-space: nowrap; pointer-events: none; }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .toast.success { background: #34c759; }
+        .toast.error { background: #ff3b30; }
+
+        /* Slide-up modal */
+        @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .slide-up { animation: slideUp 0.25s ease; }
+
+        /* Past date */
+        .past-day { opacity: 0.3; cursor: not-allowed; }
+
+        /* Spinner */
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.4); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block; }
+
+        /* Input focus */
+        input:focus, select:focus { outline: 2px solid #007aff; outline-offset: 0; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { display: none; }
     </style>
 </head>
-<body class="pb-20">
+<body class="pb-24">
+
+<!-- Toast уведомление -->
+<div id="toast" class="toast"></div>
 
 <div id="app" class="max-w-md mx-auto">
-    
-    <!-- Переключатель режима -->
-    <div class="p-4 flex justify-between items-center">
-        <h2 class="text-xl font-bold">{{ view === 'client' ? 'Запись' : 'Админ-панель' }}</h2>
-        <button @click="toggleView" class="text-sm font-semibold text-blue-600 bg-white px-4 py-2 rounded-full shadow-sm">
+
+    <!-- HEADER -->
+    <div class="p-4 flex justify-between items-center sticky top-0 z-10" style="background: rgba(242,242,247,0.85); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);">
+        <div>
+            <h2 class="text-xl font-bold">{{ view === 'client' ? '✂️ Запись' : '⚙️ Админ' }}</h2>
+            <p v-if="tgUserName" class="text-xs text-gray-400 mt-0.5">Привет, {{ tgUserName }}</p>
+        </div>
+        <button @click="toggleView" class="text-sm font-semibold text-blue-600 bg-white px-4 py-2 rounded-full shadow-sm active:opacity-70">
             {{ view === 'client' ? 'Управление' : 'Выход' }}
         </button>
     </div>
 
-    <!-- ADMIN LOGIN -->
-    <div v-if="showLogin" class="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-6">
-        <div class="ios-card w-full p-6 space-y-4">
-            <h3 class="text-center font-bold">Пароль админа</h3>
-            <input v-model="adminPasswordInput" type="password" class="w-full p-4 bg-gray-100 rounded-xl text-center outline-none">
-            <button @click="checkAdminPassword" class="w-full ios-btn-blue py-3 font-bold">Войти</button>
+    <!-- MODAL: Логин -->
+    <div v-if="showLogin" class="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-6" @click.self="showLogin = false">
+        <div class="ios-card w-full p-6 space-y-4 slide-up">
+            <h3 class="text-center text-lg font-bold">🔐 Вход в панель</h3>
+            <p class="text-center text-sm text-gray-400">Введите пароль администратора</p>
+            <input
+                v-model="adminPasswordInput"
+                type="password"
+                placeholder="••••••••"
+                class="w-full p-4 bg-gray-100 rounded-xl text-center text-lg outline-none"
+                @keyup.enter="checkAdminPassword"
+                autocomplete="current-password"
+            >
+            <p v-if="loginError" class="text-center text-sm text-red-500">{{ loginError }}</p>
+            <button @click="checkAdminPassword" :disabled="isCheckingPassword" class="w-full ios-btn-blue py-3 font-bold flex items-center justify-center gap-2">
+                <span v-if="isCheckingPassword" class="spinner"></span>
+                <span>{{ isCheckingPassword ? 'Проверка...' : 'Войти' }}</span>
+            </button>
         </div>
     </div>
 
-    <!-- ДЕТАЛИ КЛИЕНТА (MODAL) -->
-    <div v-if="selectedBookingDetails" class="fixed inset-0 modal-overlay z-50 flex items-end sm:items-center justify-center p-4">
-        <div class="ios-card w-full max-w-sm p-6 space-y-4 animate-slide-up">
-            <div class="flex justify-between items-start">
+    <!-- MODAL: Детали записи -->
+    <div v-if="selectedBookingDetails" class="fixed inset-0 modal-overlay z-50 flex items-end justify-center p-4" @click.self="selectedBookingDetails = null">
+        <div class="ios-card w-full max-w-sm p-6 space-y-4 slide-up">
+            <div class="flex justify-between items-center">
                 <h3 class="text-lg font-bold">Детали записи</h3>
-                <button @click="selectedBookingDetails = null" class="text-gray-400 text-xl">&times;</button>
+                <button @click="selectedBookingDetails = null" class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 font-bold text-lg">&times;</button>
             </div>
             <div class="space-y-3 text-sm">
-                <div class="flex justify-between border-b pb-2"> <span class="text-gray-500">Клиент:</span> <b>{{ selectedBookingDetails.name }}</b> </div>
-                <div class="flex justify-between border-b pb-2"> <span class="text-gray-500">Телефон:</span> <b>{{ selectedBookingDetails.phone || '—' }}</b> </div>
-                <div class="flex justify-between border-b pb-2"> <span class="text-gray-500">Услуга:</span> <b>{{ selectedBookingDetails.serviceName }}</b> </div>
-                <div class="flex justify-between border-b pb-2"> <span class="text-gray-500">Время:</span> <b>{{ selectedBookingDetails.time }} — {{ calculateEndTime(selectedBookingDetails.time, selectedBookingDetails.duration) }}</b> </div>
+                <div class="flex justify-between py-2 border-b border-gray-100">
+                    <span class="text-gray-400">Клиент</span>
+                    <b>{{ selectedBookingDetails.name || '—' }}</b>
+                </div>
+                <div class="flex justify-between py-2 border-b border-gray-100">
+                    <span class="text-gray-400">Телефон</span>
+                    <a :href="'tel:' + selectedBookingDetails.phone" class="font-bold text-blue-600">{{ selectedBookingDetails.phone || '—' }}</a>
+                </div>
+                <div class="flex justify-between py-2 border-b border-gray-100">
+                    <span class="text-gray-400">Услуга</span>
+                    <b>{{ selectedBookingDetails.serviceName }}</b>
+                </div>
+                <div class="flex justify-between py-2 border-b border-gray-100">
+                    <span class="text-gray-400">Дата</span>
+                    <b>{{ formatDate(selectedBookingDetails.date) }}</b>
+                </div>
+                <div class="flex justify-between py-2">
+                    <span class="text-gray-400">Время</span>
+                    <b>{{ selectedBookingDetails.time }} — {{ calculateEndTime(selectedBookingDetails.time, selectedBookingDetails.duration) }}</b>
+                </div>
             </div>
-            <button @click="selectedBookingDetails = null" class="w-full ios-btn-blue py-3 font-bold mt-4">Закрыть</button>
+            <div class="flex gap-2">
+                <button @click="selectedBookingDetails = null" class="flex-1 py-3 rounded-xl font-bold bg-gray-100 text-gray-700">Закрыть</button>
+                <button @click="deleteAndClose(selectedBookingDetails.groupId)" class="ios-btn-red flex-1 py-3 font-bold">Удалить</button>
+            </div>
         </div>
     </div>
 
     <div class="px-4 space-y-4">
+
         <!-- КАЛЕНДАРЬ -->
         <section>
-            <div class="flex items-center justify-between mb-3 px-2">
-                <div><span class="text-2xl font-bold capitalize">{{ monthName }}</span> <span class="text-2xl font-light ml-1 text-gray-400">{{ currentYear }}</span></div>
+            <div class="flex items-center justify-between mb-3 px-1">
+                <div>
+                    <span class="text-2xl font-bold capitalize">{{ monthName }}</span>
+                    <span class="text-2xl font-light ml-2 text-gray-400">{{ currentYear }}</span>
+                </div>
                 <div class="flex space-x-1">
-                    <button @click="changeMonth(-1)" class="p-2 text-blue-600"><i class="fa-solid fa-chevron-left"></i></button>
-                    <button @click="changeMonth(1)" class="p-2 text-blue-600"><i class="fa-solid fa-chevron-right"></i></button>
+                    <button @click="changeMonth(-1)" class="w-9 h-9 flex items-center justify-center rounded-full bg-white shadow-sm text-blue-600 active:opacity-70">
+                        <i class="fa-solid fa-chevron-left text-xs"></i>
+                    </button>
+                    <button @click="changeMonth(1)" class="w-9 h-9 flex items-center justify-center rounded-full bg-white shadow-sm text-blue-600 active:opacity-70">
+                        <i class="fa-solid fa-chevron-right text-xs"></i>
+                    </button>
                 </div>
             </div>
             <div class="ios-card p-4">
-                <div class="grid grid-cols-7 gap-1 text-center mb-3 text-[10px] font-bold text-gray-300 uppercase">
-                    <div v-for="d in ['Пн','Вт','Ср','Чт','Пт','Сб','Вс']">{{d}}</div>
+                <div class="grid grid-cols-7 gap-1 text-center mb-3">
+                    <div v-for="d in ['Пн','Вт','Ср','Чт','Пт','Сб','Вс']" class="text-[10px] font-bold text-gray-300 uppercase">{{d}}</div>
                 </div>
-                <div class="grid grid-cols-7 gap-2">
+                <div class="grid grid-cols-7 gap-1">
                     <div v-for="empty in firstDayOffset" class="h-9"></div>
-                    <button v-for="day in daysInMonth" :key="day" @click="selectDate(day)"
-                        :class="['h-9 w-9 flex items-center justify-center rounded-full text-sm relative', isDateSelected(day) ? 'selected-item shadow-md' : 'hover:bg-gray-50', isToday(day) && !isDateSelected(day) ? 'today-mark' : '']">
+                    <button
+                        v-for="day in daysInMonth" :key="day"
+                        @click="selectDate(day)"
+                        :disabled="isPastDay(day)"
+                        :class="[
+                            'h-9 w-9 mx-auto flex items-center justify-center rounded-full text-sm font-medium relative transition-all',
+                            isDateSelected(day) ? 'selected-item shadow-md' : '',
+                            isToday(day) && !isDateSelected(day) ? 'today-mark' : '',
+                            isPastDay(day) ? 'past-day' : (!isDateSelected(day) ? 'hover:bg-gray-50 active:bg-gray-100' : '')
+                        ]">
                         {{ day }}
-                        <div v-if="hasBookings(day)" :class="isDateSelected(day) ? 'bg-white' : 'bg-blue-400'" class="absolute bottom-1 w-1 h-1 rounded-full"></div>
+                        <div v-if="hasBookings(day)" :class="isDateSelected(day) ? 'bg-white' : 'bg-blue-400'" class="absolute bottom-0.5 w-1 h-1 rounded-full"></div>
                     </button>
                 </div>
             </div>
@@ -85,109 +178,309 @@
 
         <!-- ФОРМА ЗАПИСИ -->
         <div v-if="form.date" class="ios-card p-4 space-y-4">
-            <h3 class="text-xs font-bold text-gray-400 uppercase">Новая запись: {{ formatDate(form.date) }}</h3>
-            <div v-if="view === 'admin'" class="flex bg-gray-100 p-1 rounded-lg">
-                <button @click="form.type = 'client'" :class="form.type === 'client' ? 'bg-white shadow' : ''" class="flex-1 py-1 text-[10px] font-bold rounded-md">КЛИЕНТ</button>
-                <button @click="form.type = 'block'" :class="form.type === 'block' ? 'bg-white shadow text-red-500' : ''" class="flex-1 py-1 text-[10px] font-bold rounded-md">БЛОК</button>
+            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wide">
+                Новая запись · {{ formatDate(form.date) }}
+            </h3>
+
+            <!-- Переключатель тип (только для админа) -->
+            <div v-if="view === 'admin'" class="flex bg-gray-100 p-1 rounded-xl">
+                <button
+                    @click="form.type = 'client'; form.time = ''"
+                    :class="form.type === 'client' ? 'bg-white shadow text-blue-600' : 'text-gray-400'"
+                    class="flex-1 py-2 text-xs font-bold rounded-lg transition-all">
+                    👤 КЛИЕНТ
+                </button>
+                <button
+                    @click="form.type = 'block'; form.time = ''"
+                    :class="form.type === 'block' ? 'bg-white shadow text-red-500' : 'text-gray-400'"
+                    class="flex-1 py-2 text-xs font-bold rounded-lg transition-all">
+                    🔒 БЛОК
+                </button>
             </div>
-            <select v-if="form.type === 'client'" v-model="form.service" class="w-full p-3 bg-gray-50 rounded-xl text-sm outline-none">
-                <option :value="null">-- Выберите услугу --</option>
-                <option v-for="s in services" :key="s.id" :value="s">{{ s.name }} ({{ s.duration }}м)</option>
-            </select>
-            <div v-if="form.service || form.type === 'block'" class="grid grid-cols-4 gap-2">
-                <button v-for="t in timeSlots" :key="t" @click="isSlotSelectable(t) ? form.time = t : null"
-                    :class="[form.time === t ? 'selected-item' : 'bg-gray-50', isSlotBlocked(t) ? 'time-blocked' : '', isTimeInRange(t) ? 'in-range-item' : '']"
-                    class="py-2 rounded-lg text-xs font-medium">{{ t }}</button>
+
+            <!-- Услуга -->
+            <div v-if="form.type === 'client'">
+                <label class="text-xs text-gray-400 font-semibold mb-1 block">Услуга</label>
+                <select v-model="form.service" @change="form.time = ''" class="w-full p-3 bg-gray-50 rounded-xl text-sm outline-none border border-transparent">
+                    <option :value="null">— Выберите услугу —</option>
+                    <option v-for="s in services" :key="s.id" :value="s">{{ s.name }} · {{ s.duration }} мин</option>
+                </select>
+                <p v-if="formErrors.service" class="text-xs text-red-500 mt-1">{{ formErrors.service }}</p>
             </div>
-            <div v-if="form.time" class="space-y-2">
-                <input v-model="form.name" type="text" :placeholder="form.type === 'client' ? 'Имя' : 'Причина'" class="w-full p-3 bg-gray-50 rounded-xl text-sm outline-none">
-                <input v-if="form.type === 'client'" v-model="form.phone" type="tel" placeholder="Телефон" class="w-full p-3 bg-gray-50 rounded-xl text-sm outline-none">
-                <button @click="saveBooking" class="ios-btn-blue w-full py-4 rounded-xl font-bold">Сохранить</button>
+
+            <!-- Слоты времени -->
+            <div v-if="form.service || form.type === 'block'">
+                <label class="text-xs text-gray-400 font-semibold mb-2 block">Время</label>
+                <div class="grid grid-cols-4 gap-2">
+                    <button
+                        v-for="t in timeSlots" :key="t"
+                        @click="isSlotSelectable(t) ? form.time = t : null"
+                        :class="[
+                            'py-2.5 rounded-xl text-xs font-semibold transition-all',
+                            form.time === t ? 'selected-item shadow-sm' : '',
+                            isSlotBlocked(t) ? 'time-blocked' : 'time-free',
+                            isTimeInRange(t) && form.time !== t ? 'in-range-item' : ''
+                        ]"
+                        :disabled="isSlotBlocked(t)">
+                        {{ t }}
+                    </button>
+                </div>
+                <p v-if="formErrors.time" class="text-xs text-red-500 mt-1">{{ formErrors.time }}</p>
+            </div>
+
+            <!-- Поля ввода -->
+            <div v-if="form.time" class="space-y-3">
+                <div>
+                    <label class="text-xs text-gray-400 font-semibold mb-1 block">
+                        {{ form.type === 'client' ? 'Имя клиента' : 'Причина блокировки' }}
+                    </label>
+                    <input
+                        v-model="form.name"
+                        type="text"
+                        :placeholder="form.type === 'client' ? 'Например: Алина' : 'Например: Перерыв'"
+                        class="w-full p-3 bg-gray-50 rounded-xl text-sm border border-transparent"
+                        :class="formErrors.name ? 'border-red-300 bg-red-50' : ''"
+                    >
+                    <p v-if="formErrors.name" class="text-xs text-red-500 mt-1">{{ formErrors.name }}</p>
+                </div>
+                <div v-if="form.type === 'client'">
+                    <label class="text-xs text-gray-400 font-semibold mb-1 block">Телефон (необязательно)</label>
+                    <input
+                        v-model="form.phone"
+                        type="tel"
+                        placeholder="+998 90 123 45 67"
+                        class="w-full p-3 bg-gray-50 rounded-xl text-sm border border-transparent"
+                        :class="formErrors.phone ? 'border-red-300 bg-red-50' : ''"
+                    >
+                    <p v-if="formErrors.phone" class="text-xs text-red-500 mt-1">{{ formErrors.phone }}</p>
+                </div>
+                <button
+                    @click="saveBooking"
+                    :disabled="isSaving"
+                    class="ios-btn-blue w-full py-4 font-bold flex items-center justify-center gap-2">
+                    <span v-if="isSaving" class="spinner"></span>
+                    <span>{{ isSaving ? 'Сохранение...' : '✓ Записать' }}</span>
+                </button>
             </div>
         </div>
 
-        <!-- СПИСОК НЕДЕЛИ ДЛЯ АДМИНА -->
-        <div v-if="view === 'admin'" class="space-y-4">
-            <h3 class="section-title">График на неделю</h3>
+        <!-- РАСПИСАНИЕ (ТОЛЬКО АДМИН) -->
+        <div v-if="view === 'admin'" class="space-y-3">
+            <h3 class="section-title">📅 Расписание недели</h3>
             <div v-for="day in weekDays" :key="day.date" class="ios-card overflow-hidden">
-                <div class="bg-gray-50 px-4 py-2 text-[10px] font-bold text-gray-400 border-b flex justify-between uppercase">
-                    <span>{{ day.weekdayFull }}</span> <span>{{ formatDate(day.date) }}</span>
+                <div class="bg-gray-50 px-4 py-2.5 flex justify-between items-center border-b border-gray-100">
+                    <span class="text-xs font-bold text-gray-500 uppercase capitalize">{{ day.weekdayFull }}</span>
+                    <span class="text-xs font-semibold text-gray-400">{{ formatDate(day.date) }}</span>
                 </div>
                 <div class="divide-y divide-gray-50">
-                    <div v-if="getGroupedBookings(day.date).length === 0" class="p-4 text-xs text-gray-300 italic">Свободно</div>
-                    <div v-for="b in getGroupedBookings(day.date)" :key="b.groupId" 
+                    <div v-if="getGroupedBookings(day.date).length === 0" class="p-4 text-xs text-gray-300 italic text-center">
+                        Свободно
+                    </div>
+                    <div
+                        v-for="b in getGroupedBookings(day.date)" :key="b.groupId"
                         @click="showDetails(b)"
-                        class="p-3 flex items-center justify-between active:bg-gray-50">
-                        <div class="flex items-center space-x-3">
-                            <div class="text-center w-16 border-r pr-2">
-                                <div class="text-[11px] font-bold text-blue-600">{{ b.time }}</div>
-                                <div class="text-[9px] text-gray-400">{{ calculateEndTime(b.time, b.duration) }}</div>
+                        :class="b.type === 'block' ? 'booking-type-block' : 'booking-type-client'"
+                        class="p-3 flex items-center justify-between active:bg-gray-50 cursor-pointer">
+                        <div class="flex items-center gap-3">
+                            <div class="text-center w-14">
+                                <div class="text-xs font-bold text-blue-600">{{ b.time }}</div>
+                                <div class="text-[10px] text-gray-400">{{ calculateEndTime(b.time, b.duration) }}</div>
                             </div>
                             <div>
                                 <p class="text-sm font-bold text-gray-800">{{ b.name }}</p>
-                                <p class="text-[10px] text-gray-500 uppercase font-bold">{{ b.serviceName }}</p>
+                                <p class="text-[10px] text-gray-400 uppercase font-semibold tracking-wide">{{ b.serviceName }}</p>
                             </div>
                         </div>
-                        <button @click.stop="deleteBookingGroup(b.groupId)" class="text-gray-300 px-2"><i class="fa-solid fa-circle-minus"></i></button>
+                        <i class="fa-solid fa-chevron-right text-gray-200 text-xs"></i>
                     </div>
                 </div>
             </div>
         </div>
+
+        <!-- ПУСТОЙ ЭКРАН (клиент, нет даты) -->
+        <div v-if="!form.date && view === 'client'" class="text-center py-12 text-gray-300">
+            <div class="text-4xl mb-3">📅</div>
+            <p class="text-sm">Выберите дату для записи</p>
+        </div>
+
     </div>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import {
+        getFirestore, collection, addDoc, getDocs, deleteDoc,
+        doc, query, where, onSnapshot
+    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+    // ─── FIREBASE CONFIG ────────────────────────────────────────────────────────
+    // ⚠️ ВАЖНО: Настройте Firestore Security Rules в Firebase Console!
+    // Правила должны запрещать доступ без авторизации.
     const firebaseConfig = {
         apiKey: "AIzaSyDZ24QZe_DJKN-k46qFUfxeMhMMI5_aE0U",
         authDomain: "hair-4a62c.firebaseapp.com",
         projectId: "hair-4a62c",
         storageBucket: "hair-4a62c.firebasestorage.app",
         messagingSenderId: "261879856258",
-        appId: "1:261879856258:web:99ee1c7d75a0f69d7c489b",
-        measurementId: "G-05L1BF3FZ6"
+        appId: "1:261879856258:web:99ee1c7d75a0f69d7c489b"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+    const firebaseApp = initializeApp(firebaseConfig);
+    const db = getFirestore(firebaseApp);
 
-    const { createApp, ref, computed, onMounted } = Vue;
+    // ─── TOAST ──────────────────────────────────────────────────────────────────
+    let toastTimer = null;
+    function showToast(msg, type = 'default') {
+        const el = document.getElementById('toast');
+        el.textContent = msg;
+        el.className = `toast show ${type}`;
+        if (toastTimer) clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => { el.className = 'toast'; }, 3000);
+    }
+
+    // ─── TELEGRAM WebApp ────────────────────────────────────────────────────────
+    const tg = window.Telegram?.WebApp;
+    if (tg) {
+        tg.ready();
+        tg.expand();
+    }
+
+    // ─── ПАРОЛЬ АДМИНИСТРАТОРА ───────────────────────────────────────────────────
+    // 🔒 ВАЖНО: Замените '1234' на надёжный пароль.
+    // В идеале — проверяйте пароль через Firebase Cloud Function, а не на клиенте.
+    const ADMIN_PASSWORD_HASH = '03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4'; // SHA-256 от '1234'
+    async function hashPassword(str) {
+        const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+        return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    // ─── ТЕЛЕФОН ВАЛИДАЦИЯ ───────────────────────────────────────────────────────
+    function isValidPhone(phone) {
+        if (!phone) return true; // Телефон необязателен
+        return /^[\d\s\+\-\(\)]{7,15}$/.test(phone.trim());
+    }
+
+    // ─── ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ────────────────────────────────────────────────
+    function toDateStr(year, month, day) {
+        return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    }
+
+    // ─── VUE APP ─────────────────────────────────────────────────────────────────
+    const { createApp, ref, computed, onMounted, onUnmounted } = Vue;
 
     createApp({
         setup() {
             const view = ref('client');
             const showLogin = ref(false);
             const adminPasswordInput = ref('');
+            const loginError = ref('');
+            const isCheckingPassword = ref(false);
             const selectedBookingDetails = ref(null);
             const currentDate = ref(new Date());
             const bookings = ref([]);
             const services = ref([]);
-            const form = ref({ date: new Date().toISOString().split('T')[0], time: '', service: null, name: '', phone: '', type: 'client' });
+            const isSaving = ref(false);
+            const formErrors = ref({});
 
-            onMounted(() => {
-                onSnapshot(collection(db, "services"), (snap) => services.value = snap.docs.map(d => ({id: d.id, ...d.data()})));
-                onSnapshot(collection(db, "bookings"), (snap) => bookings.value = snap.docs.map(d => ({id: d.id, ...d.data()})));
+            // Telegram user
+            const tgUserName = computed(() => tg?.initDataUnsafe?.user?.first_name || '');
+
+            const form = ref({
+                date: new Date().toISOString().split('T')[0],
+                time: '',
+                service: null,
+                name: '',
+                phone: '',
+                type: 'client'
             });
 
-            const timeSlots = computed(() => { let r = []; for(let i=9; i<=20; i++) r.push(`${i}:00`); return r; });
+            // ── Firestore подписки ───────────────────────────────────────────────
+            let unsubServices = null;
+            let unsubBookings = null;
+
+            onMounted(() => {
+                unsubServices = onSnapshot(
+                    collection(db, "services"),
+                    (snap) => { services.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); },
+                    (err) => { console.error("Services error:", err); showToast('Ошибка загрузки услуг', 'error'); }
+                );
+                unsubBookings = onSnapshot(
+                    collection(db, "bookings"),
+                    (snap) => { bookings.value = snap.docs.map(d => ({ id: d.id, ...d.data() })); },
+                    (err) => { console.error("Bookings error:", err); showToast('Ошибка загрузки расписания', 'error'); }
+                );
+            });
+
+            onUnmounted(() => {
+                if (unsubServices) unsubServices();
+                if (unsubBookings) unsubBookings();
+            });
+
+            // ── Временные слоты — шаг 30 минут ─────────────────────────────────
+            const timeSlots = computed(() => {
+                const slots = [];
+                for (let h = 9; h <= 20; h++) {
+                    slots.push(`${h}:00`);
+                    if (h < 20) slots.push(`${h}:30`);
+                }
+                return slots;
+            });
+
+            // ── Календарь ────────────────────────────────────────────────────────
             const monthName = computed(() => currentDate.value.toLocaleDateString('ru-RU', { month: 'long' }));
             const currentYear = computed(() => currentDate.value.getFullYear());
-            const daysInMonth = computed(() => new Date(currentYear.value, currentDate.value.getMonth() + 1, 0).getDate());
-            const firstDayOffset = computed(() => { let d = new Date(currentYear.value, currentDate.value.getMonth(), 1).getDay(); return d === 0 ? 6 : d - 1; });
+            const currentMonth = computed(() => currentDate.value.getMonth());
+            const daysInMonth = computed(() => new Date(currentYear.value, currentMonth.value + 1, 0).getDate());
+            const firstDayOffset = computed(() => {
+                const d = new Date(currentYear.value, currentMonth.value, 1).getDay();
+                return d === 0 ? 6 : d - 1;
+            });
 
-            // Динамическая неделя относительно выбранной даты
+            const isPastDay = (day) => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const target = new Date(currentYear.value, currentMonth.value, day);
+                return target < today;
+            };
+
+            const isToday = (day) => {
+                const now = new Date();
+                return day === now.getDate() && currentMonth.value === now.getMonth() && currentYear.value === now.getFullYear();
+            };
+
+            const isDateSelected = (day) => form.value.date === toDateStr(currentYear.value, currentMonth.value, day);
+
+            const selectDate = (day) => {
+                if (isPastDay(day)) return;
+                form.value.date = toDateStr(currentYear.value, currentMonth.value, day);
+                form.value.time = '';
+                form.value.name = '';
+                form.value.phone = '';
+                formErrors.value = {};
+                if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+            };
+
+            const changeMonth = (v) => {
+                const d = new Date(currentDate.value);
+                d.setMonth(d.getMonth() + v);
+                currentDate.value = d;
+            };
+
+            const hasBookings = (day) => {
+                const dateStr = toDateStr(currentYear.value, currentMonth.value, day);
+                return bookings.value.some(b => b.date === dateStr);
+            };
+
+            // ── Неделя ───────────────────────────────────────────────────────────
             const weekDays = computed(() => {
-                let res = [];
-                let selDate = new Date(form.value.date);
-                // Находим понедельник этой недели
-                let day = selDate.getDay();
-                let diff = selDate.getDate() - day + (day === 0 ? -6 : 1);
-                let monday = new Date(selDate.setDate(diff));
-
-                for(let i=0; i<7; i++) {
-                    let d = new Date(monday);
+                const res = [];
+                const selDate = new Date(form.value.date);
+                const day = selDate.getDay();
+                const diff = selDate.getDate() - day + (day === 0 ? -6 : 1);
+                const monday = new Date(selDate);
+                monday.setDate(diff);
+                for (let i = 0; i < 7; i++) {
+                    const d = new Date(monday);
                     d.setDate(monday.getDate() + i);
                     res.push({
                         date: d.toISOString().split('T')[0],
@@ -197,65 +490,183 @@
                 return res;
             });
 
-            const selectDate = (day) => {
-                form.value.date = `${currentYear.value}-${String(currentDate.value.getMonth()+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-                form.value.time = '';
-            };
-
+            // ── Слоты ────────────────────────────────────────────────────────────
             const isSlotBlocked = (time) => bookings.value.some(b => b.date === form.value.date && b.time === time);
+
             const isSlotSelectable = (startTime) => {
                 if (isSlotBlocked(startTime)) return false;
-                let duration = form.value.type === 'block' ? 60 : (form.value.service?.duration || 60);
-                let needed = Math.ceil(duration / 60);
-                let idx = timeSlots.value.indexOf(startTime);
+                const duration = form.value.type === 'block' ? 60 : (form.value.service?.duration || 60);
+                const needed = Math.ceil(duration / 30);
+                const idx = timeSlots.value.indexOf(startTime);
                 for (let i = 0; i < needed; i++) {
-                    if (!timeSlots.value[idx+i] || isSlotBlocked(timeSlots.value[idx+i])) return false;
+                    if (!timeSlots.value[idx + i] || isSlotBlocked(timeSlots.value[idx + i])) return false;
                 }
                 return true;
             };
 
-            const saveBooking = async () => {
-                const gid = Date.now().toString();
-                let duration = form.value.type === 'block' ? 60 : form.value.service.duration;
-                let needed = Math.ceil(duration / 60);
-                let idx = timeSlots.value.indexOf(form.value.time);
-                for (let i = 0; i < needed; i++) {
-                    await addDoc(collection(db, "bookings"), {
-                        groupId: gid, date: form.value.date, time: timeSlots.value[idx+i],
-                        type: form.value.type, name: form.value.name, phone: form.value.phone || '',
-                        serviceName: form.value.type === 'block' ? 'БЛОК' : form.value.service.name,
-                        duration: duration, isHead: i === 0
-                    });
-                }
-                form.value.time = ''; form.value.name = ''; form.value.phone = '';
+            const isTimeInRange = (t) => {
+                if (!form.value.time) return false;
+                const dur = form.value.type === 'block' ? 60 : (form.value.service?.duration || 60);
+                const n = Math.ceil(dur / 30);
+                const s = timeSlots.value.indexOf(form.value.time);
+                const c = timeSlots.value.indexOf(t);
+                return c >= s && c < s + n;
             };
 
+            // ── Валидация ────────────────────────────────────────────────────────
+            const validateForm = () => {
+                const errors = {};
+                if (form.value.type === 'client' && !form.value.service) {
+                    errors.service = 'Выберите услугу';
+                }
+                if (!form.value.time) {
+                    errors.time = 'Выберите время';
+                }
+                if (!form.value.name.trim()) {
+                    errors.name = form.value.type === 'client' ? 'Введите имя клиента' : 'Введите причину';
+                }
+                if (form.value.type === 'client' && form.value.phone && !isValidPhone(form.value.phone)) {
+                    errors.phone = 'Неверный формат номера';
+                }
+                formErrors.value = errors;
+                return Object.keys(errors).length === 0;
+            };
+
+            // ── Сохранение ───────────────────────────────────────────────────────
+            const saveBooking = async () => {
+                if (!validateForm()) {
+                    if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+                    return;
+                }
+                isSaving.value = true;
+                try {
+                    const gid = Date.now().toString();
+                    const duration = form.value.type === 'block' ? 60 : form.value.service.duration;
+                    const needed = Math.ceil(duration / 30);
+                    const idx = timeSlots.value.indexOf(form.value.time);
+
+                    const writes = [];
+                    for (let i = 0; i < needed; i++) {
+                        writes.push(addDoc(collection(db, "bookings"), {
+                            groupId: gid,
+                            date: form.value.date,
+                            time: timeSlots.value[idx + i],
+                            type: form.value.type,
+                            name: form.value.name.trim(),
+                            phone: form.value.phone.trim() || '',
+                            serviceName: form.value.type === 'block' ? 'БЛОК' : form.value.service.name,
+                            duration: duration,
+                            isHead: i === 0,
+                            createdAt: new Date().toISOString()
+                        }));
+                    }
+                    await Promise.all(writes);
+
+                    form.value.time = '';
+                    form.value.name = '';
+                    form.value.phone = '';
+                    form.value.service = null;
+                    formErrors.value = {};
+
+                    showToast('✅ Запись сохранена!', 'success');
+                    if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+                } catch (err) {
+                    console.error("Save error:", err);
+                    showToast('❌ Ошибка сохранения. Попробуйте ещё раз.', 'error');
+                    if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+                } finally {
+                    isSaving.value = false;
+                }
+            };
+
+            // ── Удаление ─────────────────────────────────────────────────────────
+            const deleteBookingGroup = async (gid) => {
+                try {
+                    const q = query(collection(db, "bookings"), where("groupId", "==", gid));
+                    const snap = await getDocs(q);
+                    await Promise.all(snap.docs.map(d => deleteDoc(doc(db, "bookings", d.id))));
+                    showToast('🗑️ Запись удалена', 'default');
+                    if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('warning');
+                } catch (err) {
+                    console.error("Delete error:", err);
+                    showToast('❌ Ошибка удаления', 'error');
+                }
+            };
+
+            const deleteAndClose = async (gid) => {
+                selectedBookingDetails.value = null;
+                await deleteBookingGroup(gid);
+            };
+
+            // ── Логин ────────────────────────────────────────────────────────────
+            const toggleView = () => {
+                if (view.value === 'client') {
+                    showLogin.value = true;
+                    loginError.value = '';
+                    adminPasswordInput.value = '';
+                } else {
+                    view.value = 'client';
+                    form.value.type = 'client';
+                }
+            };
+
+            const checkAdminPassword = async () => {
+                if (!adminPasswordInput.value) return;
+                isCheckingPassword.value = true;
+                loginError.value = '';
+                try {
+                    const hash = await hashPassword(adminPasswordInput.value);
+                    // Небольшая задержка — защита от брутфорса
+                    await new Promise(r => setTimeout(r, 400));
+                    if (hash === ADMIN_PASSWORD_HASH) {
+                        view.value = 'admin';
+                        showLogin.value = false;
+                        adminPasswordInput.value = '';
+                    } else {
+                        loginError.value = 'Неверный пароль';
+                        if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+                    }
+                } finally {
+                    isCheckingPassword.value = false;
+                }
+            };
+
+            // ── Прочее ───────────────────────────────────────────────────────────
             const calculateEndTime = (start, dur) => {
-                let [h, m] = start.split(':').map(Number);
-                let d = new Date(2000, 0, 1, h, m + dur);
-                return d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0');
+                const [h, m] = start.split(':').map(Number);
+                const d = new Date(2000, 0, 1, h, m + dur);
+                return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+            };
+
+            const getGroupedBookings = (date) =>
+                bookings.value
+                    .filter(b => b.date === date && b.isHead)
+                    .sort((a, b) => a.time.localeCompare(b.time));
+
+            const showDetails = (b) => { selectedBookingDetails.value = b; };
+
+            const formatDate = (s) => {
+                const d = new Date(s);
+                // Корректируем для timezone offset
+                return new Date(d.getTime() + d.getTimezoneOffset() * 60000)
+                    .toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', weekday: 'short' });
             };
 
             return {
-                view, showLogin, adminPasswordInput, selectedBookingDetails,
-                toggleView: () => { if(view.value === 'client') showLogin.value = true; else view.value = 'client'; },
-                checkAdminPassword: () => { if(adminPasswordInput.value === '1234') { view.value = 'admin'; showLogin.value = false; adminPasswordInput.value = ''; } else alert('Неверно'); },
+                view, showLogin, adminPasswordInput, loginError, isCheckingPassword,
+                selectedBookingDetails, currentDate, bookings, services,
+                form, isSaving, formErrors,
+                tgUserName,
+                toggleView, checkAdminPassword,
                 monthName, currentYear, daysInMonth, firstDayOffset, weekDays,
-                changeMonth: (v) => { let d = new Date(currentDate.value); d.setMonth(d.getMonth()+v); currentDate.value = d; },
-                selectDate, isDateSelected: (d) => form.value.date === `${currentYear.value}-${String(currentDate.value.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`,
-                isToday: (d) => d === new Date().getDate() && currentDate.value.getMonth() === new Date().getMonth(),
-                timeSlots, form, isSlotBlocked, isSlotSelectable, saveBooking, services,
-                hasBookings: (d) => bookings.value.some(b => b.date === `${currentYear.value}-${String(currentDate.value.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`),
-                getGroupedBookings: (date) => bookings.value.filter(b => b.date === date && b.isHead).sort((a,b) => a.time.localeCompare(b.time)),
-                deleteBookingGroup: async (gid) => { if(confirm('Удалить?')) { const q = query(collection(db, "bookings"), where("groupId", "==", gid)); const snap = await getDocs(q); snap.forEach(async (d) => await deleteDoc(doc(db, "bookings", d.id))); } },
-                calculateEndTime,
-                showDetails: (b) => { selectedBookingDetails.value = b; },
-                isTimeInRange: (t) => { if(!form.value.time) return false; let dur = form.value.type === 'block' ? 60 : (form.value.service?.duration || 60); let n = Math.ceil(dur/60); let s = timeSlots.value.indexOf(form.value.time); let c = timeSlots.value.indexOf(t); return c >= s && c < s + n; },
-                formatDate: (s) => new Date(s).toLocaleDateString('ru-RU', {day:'numeric', month:'short'})
-            }
+                changeMonth, selectDate,
+                isDateSelected, isToday, isPastDay, hasBookings,
+                timeSlots, isSlotBlocked, isSlotSelectable, isTimeInRange,
+                saveBooking, deleteBookingGroup, deleteAndClose,
+                calculateEndTime, getGroupedBookings, showDetails, formatDate
+            };
         }
     }).mount('#app');
 </script>
-
 </body>
 </html>
